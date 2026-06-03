@@ -87,6 +87,15 @@ canvas{width:100%!important;height:100%!important}
 .cldot{width:10px;height:3px;border-radius:2px;flex-shrink:0}
 /* Disc */
 .disc{font-size:10px;color:#2a4a6a;text-align:center;padding:14px;margin-top:16px;border-top:1px solid #111827;line-height:1.7}
+.obbba{background:#0a1a2a;border:1px solid #1a4a7a;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:12px;color:#5a9acc;line-height:1.6}
+.obbba strong{color:#7abcee}
+.comp-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+.comp-table th{text-align:left;padding:7px 10px;background:#0a0f1a;color:#3a6a8a;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #1a2a40}
+.comp-table td{padding:7px 10px;border-bottom:1px solid #141e30;color:#c0cce0}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table tr:hover td{background:#0d1525}
+.out-r{color:#e06060;font-weight:600}.out-y{color:#d08030;font-weight:600}.out-g{color:#40c070;font-weight:600}.out-b{color:#4a90e0;font-weight:600}
+.best-row{margin-top:10px;padding:8px 12px;background:#0a1a10;border:1px solid #1a4a2a;border-radius:6px;font-size:11px;color:#40c070}
 </style>
 </head>
 <body>
@@ -113,6 +122,10 @@ canvas{width:100%!important;height:100%!important}
       <div class="user-chip" id="uChip"></div>
       <button class="btn-out" onclick="doLogout()">Sign out</button>
     </div>
+  </div>
+
+  <div class="obbba">
+    <strong>⚖️ 2026 Tax Law Update — OBBBA:</strong> The federal estate tax exemption is now <strong>$15,000,000 per individual</strong> ($30,000,000 for married couples), effective January 1, 2026. The prior TCJA sunset to ~$7M was permanently eliminated by the One Big Beautiful Bill Act (OBBBA), signed July 4, 2025. The 40% estate tax rate on amounts above the exemption remains unchanged. All scenarios in this tool reflect current 2026 law.
   </div>
 
   <div class="sc-bar">
@@ -219,6 +232,18 @@ canvas{width:100%!important;height:100%!important}
           <div class="risk-lbl">Forced Sale Risk:</div>
           <div id="rRisk">—</div>
         </div>
+
+        <div class="stitle" style="margin-top:18px">Planning Comparison Snapshot</div>
+        <div style="font-size:11px;color:#3a5a7a;margin-bottom:8px">Compare how different planning strategies impact liquidity, settlement costs, and legacy outcomes.</div>
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Scenario</th><th>Settlement Costs</th><th>Insurance Offset</th><th>Liquidity Shortfall</th><th>Legacy to Heirs</th><th>Risk</th><th>Outcome</th>
+            </tr>
+          </thead>
+          <tbody id="compBody"></tbody>
+        </table>
+        <div class="best-row" id="bestRow"></div>
       </div>
 
       <div class="pnl">
@@ -422,11 +447,41 @@ function calc(){
   const rCls={Low:"rL",Moderate:"rM",High:"rH",Unknown:"rU"};
   document.getElementById("rRisk").innerHTML=`<span class="rbadge ${rCls[r.risk]}">${r.risk}</span>`;
 
-  drawChart(timeSeries(inp,inclIns,inclGift));
+  drawChart(timeSeries(inp,inclIns,inclGift),inp.yrs);
+  buildCompTable(inp);
+}
+
+function buildCompTable(inp){
+  const combos=[
+    {label:"Current Planning",ins:false,gift:false,outCls:"out-r",out:"Significant liquidity exposure"},
+    {label:"Insurance Only",ins:true,gift:false,outCls:"out-y",out:"Improves liquidity position"},
+    {label:"Gifting / FLP Only",ins:false,gift:true,outCls:"out-g",out:"Reduces estate and supports liquidity"},
+    {label:"Insurance + Gifting",ins:true,gift:true,outCls:"out-b",out:"Optimizes liquidity and legacy"},
+  ];
+  const rCls={Low:"rL",Moderate:"rM",High:"rH",Unknown:"rU"};
+  let rows="",bestIdx=0,bestLeg=-1;
+  combos.forEach((c,i)=>{
+    const r=model(inp,c.ins,c.gift);
+    if(r.leg>bestLeg){bestLeg=r.leg;bestIdx=i;}
+    rows+=`<tr>
+      <td>${i}</td>
+      <td>${c.label}</td>
+      <td style="color:#e06060">${fmt(r.totCost)}</td>
+      <td style="color:#4a90e0">${fmt(r.insOff)}</td>
+      <td style="color:${r.short>0?"#e06060":"#40c070"}">${fmt(r.short)}</td>
+      <td style="color:#40c070">${fmt(r.leg)}</td>
+      <td><span class="rbadge ${rCls[r.risk]}">${r.risk}</span></td>
+      <td class="${c.outCls}">${c.out}</td>
+    </tr>`;
+  });
+  document.getElementById("compBody").innerHTML=rows;
+  const best=combos[bestIdx];
+  const br=model(inp,best.ins,best.gift);
+  document.getElementById("bestRow").innerHTML=`⭐ Best outcome: <strong>${best.label}</strong> — Settlement Costs ${fmt(br.totCost)} | Legacy to Heirs ${fmt(br.leg)}`;
 }
 
 // ── CHART ────────────────────────────────────────────────────
-function drawChart(rows){
+function drawChart(rows,horizonYr){
   const cv=document.getElementById("ch");
   const cont=cv.parentElement;
   const W=cont.clientWidth||640,H=cont.clientHeight||220;
@@ -459,6 +514,16 @@ function drawChart(rows){
   // Year labels
   ctx.fillStyle="#2a4a6a";ctx.textAlign="center";ctx.font="10px system-ui";
   [1,5,10,15,20,25,30].forEach(yr=>ctx.fillText("Y"+yr,xp(yr),H-PAD.b+14));
+
+  // Horizon vertical line
+  if(horizonYr>=1&&horizonYr<=30){
+    const hx=xp(horizonYr);
+    ctx.strokeStyle="#5a7aaa";ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(hx,PAD.t);ctx.lineTo(hx,PAD.t+cH);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="#5a7aaa";ctx.textAlign="center";ctx.font="10px system-ui";
+    ctx.fillText("Y"+horizonYr,hx,PAD.t-4);
+  }
 
   // Series
   const ser=[

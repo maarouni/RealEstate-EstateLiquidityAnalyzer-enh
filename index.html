@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estate Liquidity Analyzer — NYL APG</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0f1a;color:#dde4f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+/* AUTH */
+.auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0f1a}
+.auth-card{background:#111827;border:1px solid #1e3a5f;border-radius:14px;padding:44px 40px;width:420px;text-align:center;box-shadow:0 0 60px rgba(30,90,160,0.15)}
+.auth-org{font-size:11px;letter-spacing:.14em;color:#4a7aaa;text-transform:uppercase;margin-bottom:10px;font-weight:600}
+.auth-title{font-size:24px;font-weight:700;color:#e8f0fe;margin-bottom:6px}
+.auth-sub{font-size:13px;color:#5a7aaa;margin-bottom:32px}
+.auth-input{width:100%;padding:12px 16px;background:#0a0f1a;border:1px solid #1e3a5f;border-radius:8px;color:#dde4f0;font-size:14px;margin-bottom:12px;outline:none;transition:.2s}
+.auth-input:focus{border-color:#3a7ad4}
+.auth-btn{width:100%;padding:13px;background:#1a4a9e;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:.2s;letter-spacing:.02em}
+.auth-btn:hover{background:#2560c0}
+.auth-err{color:#e06060;font-size:12px;margin-top:8px;min-height:18px}
+/* APP */
+#app{display:none;padding:20px 24px;max-width:1440px;margin:0 auto}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #1a2a40}
+.hdr-left{display:flex;align-items:baseline;gap:10px}
+.hdr-brand{font-size:11px;color:#3a6aaa;letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.hdr-title{font-size:19px;font-weight:700;color:#e8f0fe}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.user-chip{background:#111827;border:1px solid #1e3a5f;border-radius:6px;padding:4px 12px;font-size:12px;color:#5a8acc}
+.btn-out{padding:6px 14px;background:transparent;border:1px solid #1e3a5f;border-radius:6px;color:#5a7aaa;font-size:12px;cursor:pointer}
+.btn-out:hover{border-color:#3a5a80;color:#8aaace}
+/* Scenario bar */
+.sc-bar{background:#111827;border:1px solid #1e3a5f;border-radius:10px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sc-lbl{font-size:12px;color:#4a6a8a;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.sc-sel{flex:1;min-width:220px;padding:8px 12px;background:#0a0f1a;border:1px solid #1e3a5f;border-radius:6px;color:#dde4f0;font-size:13px;cursor:pointer;outline:none}
+/* Layout */
+.grid{display:grid;grid-template-columns:360px 1fr;gap:18px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+/* Panels */
+.pnl{background:#111827;border:1px solid #1a2a40;border-radius:10px;padding:18px;margin-bottom:16px}
+.pnl-t{font-size:11px;font-weight:700;color:#3a6a9a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #1a2a40}
+/* Form */
+.f{margin-bottom:12px}
+.f label{display:block;font-size:11px;color:#4a7aaa;margin-bottom:4px;font-weight:600;letter-spacing:.03em}
+.f input[type=number]{width:100%;padding:8px 10px;background:#0a0f1a;border:1px solid #1a2a40;border-radius:6px;color:#dde4f0;font-size:13px;outline:none;transition:.2s}
+.f input[type=number]:focus{border-color:#3a7ad4}
+.frow{display:flex;gap:10px}
+.frow .f{flex:1}
+/* Range sliders */
+.f input[type=range]{width:100%;accent-color:#3a7ad4;height:4px;cursor:pointer;background:#1a2a40;border-radius:2px}
+/* Toggle switches */
+.trow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #141e30}
+.trow:last-child{border-bottom:none}
+.tlbl{flex:1;font-size:13px;color:#c0cce0}
+.tsub{font-size:11px;color:#3a5a7a;display:block;margin-top:2px}
+.tog{position:relative;width:38px;height:21px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tslide{position:absolute;inset:0;background:#1a2a40;border-radius:21px;cursor:pointer;transition:.3s}
+.tslide:before{content:'';position:absolute;width:15px;height:15px;left:3px;top:3px;background:#4a6a8a;border-radius:50%;transition:.3s}
+.tog input:checked+.tslide{background:#1a4a9e}
+.tog input:checked+.tslide:before{transform:translateX(17px);background:#fff}
+/* Section title */
+.stitle{font-size:11px;font-weight:700;color:#3a5a7a;text-transform:uppercase;letter-spacing:.07em;margin:14px 0 8px}
+/* Metric cards */
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:10px}
+.mc{background:#0a0f1a;border:1px solid #1a2a40;border-radius:8px;padding:12px}
+.mc.hi{border-color:#1e4a8e}
+.mc.dn{border-color:#6a1a1a;background:#100a0a}
+.mc.ok{border-color:#1a5a30;background:#0a100d}
+.mc-lbl{font-size:10px;color:#3a6a8a;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.mc-val{font-size:18px;font-weight:700;color:#dde4f0}
+.mc-val.dn{color:#e06060}
+.mc-val.ok{color:#40c070}
+.mc-val.hi{color:#4a90e0}
+/* Risk */
+.risk-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#0a0f1a;border-radius:8px;margin-top:10px}
+.risk-lbl{font-size:12px;color:#4a6a8a;font-weight:600}
+.rbadge{display:inline-block;padding:3px 12px;border-radius:4px;font-size:12px;font-weight:700}
+.rL{background:#0a2010;color:#40c070}
+.rM{background:#201500;color:#d08030}
+.rH{background:#200a0a;color:#e06060}
+.rU{background:#1a2a40;color:#6a8aaa}
+/* Chart */
+.chart-wrap{position:relative;height:220px;margin-top:14px}
+canvas{width:100%!important;height:100%!important}
+.clegend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+.cli{display:flex;align-items:center;gap:5px;font-size:11px;color:#4a6a8a}
+.cldot{width:10px;height:3px;border-radius:2px;flex-shrink:0}
+/* Disc */
+.disc{font-size:10px;color:#2a4a6a;text-align:center;padding:14px;margin-top:16px;border-top:1px solid #111827;line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-card">
+    <div class="auth-org">New York Life · Advanced Planning Group</div>
+    <div class="auth-title">Estate Liquidity Analyzer</div>
+    <div class="auth-sub" id="authSub">Enter access password to continue</div>
+    <input type="password" class="auth-input" id="pwIn" placeholder="Password" />
+    <input type="password" class="auth-input" id="pinIn" placeholder="Your personal PIN" style="display:none" />
+    <button class="auth-btn" onclick="doAuth()">Continue</button>
+    <div class="auth-err" id="authErr"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-brand">NYL · APG</div>
+      <div class="hdr-title">Estate Liquidity Analyzer</div>
+    </div>
+    <div class="hdr-right">
+      <div class="user-chip" id="uChip"></div>
+      <button class="btn-out" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="sc-bar">
+    <div class="sc-lbl">Load scenario</div>
+    <select class="sc-sel" id="scSel" onchange="loadSc()">
+      <option value="">— Custom inputs —</option>
+      <option value="hnw">HNW RE Investor — FLP + ILIT Combined Strategy</option>
+      <option value="base">Base Case</option>
+      <option value="hg">High Growth / Low Liquidity</option>
+      <option value="ins">Insurance Solves the Gap</option>
+      <option value="plan">Planning Reduces Taxable Estate</option>
+    </select>
+  </div>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <div>
+      <div class="pnl">
+        <div class="pnl-t">Estate Inputs</div>
+        <div class="frow">
+          <div class="f"><label>Real Estate Value ($)</label><input type="number" id="iRE" value="4000000" step="100000" oninput="calc()"></div>
+          <div class="f"><label>Current Debt ($)</label><input type="number" id="iDebt" value="500000" step="50000" oninput="calc()"></div>
+        </div>
+        <div class="frow">
+          <div class="f"><label>Other Assets ($)</label><input type="number" id="iOther" value="2000000" step="100000" oninput="calc()"></div>
+          <div class="f"><label>Liquid Assets ($)</label><input type="number" id="iLiq" value="300000" step="50000" oninput="calc()"></div>
+        </div>
+        <div class="f"><label>Life Insurance Death Benefit ($)</label><input type="number" id="iIns" value="1000000" step="100000" oninput="calc()"></div>
+        <div class="frow">
+          <div class="f"><label>RE Appreciation Rate (%)</label><input type="number" id="iRR" value="6" step="0.5" min="0" max="20" oninput="calc()"></div>
+          <div class="f"><label>Other Asset Growth (%)</label><input type="number" id="iOR" value="5" step="0.5" min="0" max="20" oninput="calc()"></div>
+        </div>
+        <div class="f"><label>Years Until Estate Settlement</label><input type="number" id="iYrs" value="10" step="1" min="1" max="40" oninput="calc()"></div>
+      </div>
+
+      <div class="pnl">
+        <div class="pnl-t">Tax &amp; Cost Parameters</div>
+        <div class="f">
+          <label>Estate Tax Exemption ($) — OBBBA 2026: $15M</label>
+          <input type="number" id="iExmpt" value="15000000" step="500000" oninput="calc()">
+        </div>
+        <div class="frow">
+          <div class="f"><label>Estate Tax Rate (%)</label><input type="number" id="iTR" value="40" step="1" min="0" max="60" oninput="calc()"></div>
+          <div class="f"><label>Probate Cost Rate (%)</label><input type="number" id="iPR" value="1" step="0.1" min="0" max="10" oninput="calc()"></div>
+        </div>
+      </div>
+
+      <div class="pnl">
+        <div class="pnl-t">Planning Strategies</div>
+        <div class="trow">
+          <div class="tlbl">Include Insurance<span class="tsub">Count death benefit in liquidity</span></div>
+          <label class="tog"><input type="checkbox" id="tIns" checked onchange="calc()"><span class="tslide"></span></label>
+        </div>
+        <div class="trow">
+          <div class="tlbl">ILIT Structure<span class="tsub">Insurance in trust — excluded from taxable estate</span></div>
+          <label class="tog"><input type="checkbox" id="tIlit" checked onchange="calc()"><span class="tslide"></span></label>
+        </div>
+        <div class="trow">
+          <div class="tlbl">FLP Gifting Strategy<span class="tsub">Family Limited Partnership reduces taxable estate</span></div>
+          <label class="tog"><input type="checkbox" id="tGift" checked onchange="calc()"><span class="tslide"></span></label>
+        </div>
+        <div class="f" style="margin-top:14px">
+          <label>Gifting Reduction — <span id="gPct">80%</span></label>
+          <input type="range" id="sGift" min="0" max="100" value="80" step="5" oninput="document.getElementById('gPct').textContent=this.value+'%';calc()">
+        </div>
+        <div class="f">
+          <label>FLP Valuation Discount — <span id="fPct">30%</span></label>
+          <input type="range" id="sFLP" min="0" max="50" value="30" step="5" oninput="document.getElementById('fPct').textContent=this.value+'%';calc()">
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div>
+      <div class="pnl" style="margin-bottom:16px">
+        <div class="pnl-t">Estate Projection Results</div>
+
+        <div class="stitle">Projected Estate</div>
+        <div class="mgrid">
+          <div class="mc"><div class="mc-lbl">Real Estate Value</div><div class="mc-val hi" id="rRE">—</div></div>
+          <div class="mc"><div class="mc-lbl">Other Assets</div><div class="mc-val hi" id="rOth">—</div></div>
+          <div class="mc"><div class="mc-lbl">Gross Estate</div><div class="mc-val" id="rGross">—</div></div>
+          <div class="mc hi"><div class="mc-lbl">Net Estate</div><div class="mc-val" id="rNet">—</div></div>
+        </div>
+
+        <div class="stitle">Settlement Costs</div>
+        <div class="mgrid">
+          <div class="mc ok"><div class="mc-lbl">Gifting Reduction</div><div class="mc-val ok" id="rGift">—</div></div>
+          <div class="mc"><div class="mc-lbl">Taxable Estate</div><div class="mc-val" id="rTax">—</div></div>
+          <div class="mc dn"><div class="mc-lbl">Est. Estate Tax</div><div class="mc-val dn" id="rETax">—</div></div>
+          <div class="mc dn"><div class="mc-lbl">Probate Cost</div><div class="mc-val dn" id="rProb">—</div></div>
+          <div class="mc dn"><div class="mc-lbl">Total Settlement</div><div class="mc-val dn" id="rTot">—</div></div>
+        </div>
+
+        <div class="stitle">Liquidity Analysis</div>
+        <div class="mgrid">
+          <div class="mc"><div class="mc-lbl">Insurance Offset</div><div class="mc-val hi" id="rInsOff">—</div></div>
+          <div class="mc"><div class="mc-lbl">Available Liquidity</div><div class="mc-val" id="rAvail">—</div></div>
+          <div class="mc" id="mcShort"><div class="mc-lbl">Liquidity Shortfall</div><div class="mc-val" id="rShort">—</div></div>
+          <div class="mc ok"><div class="mc-lbl">Legacy to Heirs</div><div class="mc-val ok" id="rLeg">—</div></div>
+        </div>
+
+        <div class="risk-row">
+          <div class="risk-lbl">Forced Sale Risk:</div>
+          <div id="rRisk">—</div>
+        </div>
+      </div>
+
+      <div class="pnl">
+        <div class="pnl-t">30-Year Projection</div>
+        <div class="chart-wrap"><canvas id="ch"></canvas></div>
+        <div class="clegend">
+          <div class="cli"><div class="cldot" style="background:#4a90e0"></div>Net Estate</div>
+          <div class="cli"><div class="cldot" style="background:#e06060"></div>Settlement Costs</div>
+          <div class="cli"><div class="cldot" style="background:#40c070"></div>Legacy to Heirs</div>
+          <div class="cli"><div class="cldot" style="background:#d08030"></div>Liquidity Shortfall</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disc">
+    For internal planning use only · RealEstate-Analytics.ai · NYL Advanced Planning Group<br>
+    Educational estimates only — not guarantees. Results are projections based on inputs provided. Consult qualified legal and tax counsel before implementing any strategy.<br>
+    OBBBA 2026: $15M estate tax exemption per individual (permanent, inflation-indexed). Tax law subject to change.
+  </div>
+</div>
+
+<script>
+// ── AUTH ──────────────────────────────────────────────────────
+const PW="Estate-Liquidity1!";
+const PINS={masoud:"2025",aaron:"4286",tom:"8891",advisor1:"3317",advisor2:"5529"};
+let step="pw",who="";
+
+function doAuth(){
+  if(step==="pw"){
+    if(document.getElementById("pwIn").value===PW){
+      step="pin";
+      document.getElementById("pwIn").style.display="none";
+      document.getElementById("pinIn").style.display="block";
+      document.getElementById("pinIn").focus();
+      document.getElementById("authSub").textContent="Enter your personal PIN";
+      document.getElementById("authErr").textContent="";
+    }else{document.getElementById("authErr").textContent="Incorrect password.";}
+  }else{
+    const pin=document.getElementById("pinIn").value;
+    const u=Object.keys(PINS).find(k=>PINS[k]===pin);
+    if(u){
+      who=u;
+      document.getElementById("authWrap").style.display="none";
+      document.getElementById("app").style.display="block";
+      document.getElementById("uChip").textContent=u.charAt(0).toUpperCase()+u.slice(1);
+      calc();
+    }else{document.getElementById("authErr").textContent="Incorrect PIN.";}
+  }
+}
+document.addEventListener("keydown",e=>{if(e.key==="Enter")doAuth();});
+
+function doLogout(){
+  step="pw";who="";
+  document.getElementById("pwIn").value="";
+  document.getElementById("pinIn").value="";
+  document.getElementById("pinIn").style.display="none";
+  document.getElementById("pwIn").style.display="block";
+  document.getElementById("authSub").textContent="Enter access password to continue";
+  document.getElementById("authWrap").style.display="flex";
+  document.getElementById("app").style.display="none";
+}
+
+// ── SCENARIOS ─────────────────────────────────────────────────
+const SC={
+  hnw:{re:4000000,debt:500000,oth:2000000,liq:300000,ins:1000000,rr:6,or:5,yrs:10,exmpt:15000000,tr:40,pr:1,gift:80,flp:30,ilit:true,tIns:true,tGift:true},
+  base:{re:8000000,debt:1500000,oth:5000000,liq:500000,ins:1500000,rr:5,or:4,yrs:12,exmpt:15000000,tr:40,pr:1,gift:20,flp:0,ilit:false,tIns:true,tGift:true},
+  hg:{re:10000000,debt:2000000,oth:3000000,liq:200000,ins:500000,rr:7,or:5,yrs:12,exmpt:15000000,tr:40,pr:1.2,gift:10,flp:0,ilit:false,tIns:true,tGift:true},
+  ins:{re:9000000,debt:1000000,oth:5000000,liq:150000,ins:4000000,rr:6,or:4,yrs:10,exmpt:15000000,tr:40,pr:1,gift:10,flp:0,ilit:false,tIns:true,tGift:true},
+  plan:{re:12000000,debt:2000000,oth:6000000,liq:400000,ins:1000000,rr:6,or:4,yrs:10,exmpt:15000000,tr:40,pr:1,gift:30,flp:0,ilit:false,tIns:true,tGift:true},
+};
+
+function loadSc(){
+  const k=document.getElementById("scSel").value;if(!k)return;
+  const s=SC[k];
+  document.getElementById("iRE").value=s.re;
+  document.getElementById("iDebt").value=s.debt;
+  document.getElementById("iOther").value=s.oth;
+  document.getElementById("iLiq").value=s.liq;
+  document.getElementById("iIns").value=s.ins;
+  document.getElementById("iRR").value=s.rr;
+  document.getElementById("iOR").value=s.or;
+  document.getElementById("iYrs").value=s.yrs;
+  document.getElementById("iExmpt").value=s.exmpt;
+  document.getElementById("iTR").value=s.tr;
+  document.getElementById("iPR").value=s.pr;
+  document.getElementById("sGift").value=s.gift;
+  document.getElementById("gPct").textContent=s.gift+"%";
+  document.getElementById("sFLP").value=s.flp;
+  document.getElementById("fPct").textContent=s.flp+"%";
+  document.getElementById("tIlit").checked=s.ilit;
+  document.getElementById("tIns").checked=s.tIns;
+  document.getElementById("tGift").checked=s.tGift;
+  calc();
+}
+
+// ── CALCULATIONS (port of calculations.py) ────────────────────
+function fv(p,r,y){return p*Math.pow(1+r,y);}
+
+function model(inp,inclIns,inclGift){
+  const pRE=fv(inp.re,inp.rr,inp.yrs);
+  const pOth=fv(inp.oth,inp.or,inp.yrs);
+  const pGross=pRE+pOth;
+  const pNet=Math.max(pGross-inp.debt,0);
+
+  // FLP gifting with valuation discount
+  let gAmt=0;
+  if(inclGift){
+    const gp=Math.min(Math.max(inp.giftPct,0),1);
+    const fd=Math.min(Math.max(inp.flpDisc,0),0.5);
+    gAmt=pNet*gp*(1-fd);
+  }
+
+  // Taxable estate — ILIT: insurance excluded if in trust
+  const insEstate=(inclIns&&!inp.ilit)?inp.ins:0;
+  const taxEst=Math.max(pNet+insEstate-gAmt-inp.exmpt,0);
+
+  // Settlement costs
+  const eTax=Math.max(taxEst*inp.taxRate,0);
+  const prob=Math.max(pNet*inp.probPct,0);
+  const totCost=eTax+prob;
+
+  // Liquidity
+  const insOff=inclIns?inp.ins:0;
+  const avail=inp.liq+insOff;
+  const short=Math.max(totCost-avail,0);
+
+  // Legacy
+  const afterCost=Math.max(pNet-totCost,0);
+  const leg=inclGift?afterCost+gAmt:afterCost;
+
+  // Risk label
+  let risk="Unknown";
+  if(pNet>0){const r=short/pNet;risk=r<=0.05?"Low":r<=0.15?"Moderate":"High";}
+
+  return{pRE,pOth,pGross,pNet,gAmt,taxEst,eTax,prob,totCost,avail,insOff,short,leg,risk};
+}
+
+function timeSeries(inp,inclIns,inclGift){
+  const rows=[];
+  for(let yr=1;yr<=30;yr++){
+    const r=model({...inp,yrs:yr},inclIns,inclGift);
+    rows.push({yr,pNet:r.pNet,totCost:r.totCost,leg:r.leg,short:r.short});
+  }
+  return rows;
+}
+
+// ── FORMAT ────────────────────────────────────────────────────
+function fmt(n){
+  if(n>=1e9)return"$"+(n/1e9).toFixed(2)+"B";
+  if(n>=1e6)return"$"+(n/1e6).toFixed(2)+"M";
+  if(n>=1e3)return"$"+(n/1e3).toFixed(0)+"K";
+  return"$"+Math.round(n).toLocaleString();
+}
+
+function set(id,val,cls){
+  const el=document.getElementById(id);
+  el.textContent=val;
+  if(cls){el.className="mc-val "+cls;}
+}
+
+// ── MAIN CALC ─────────────────────────────────────────────────
+function calc(){
+  const inp={
+    re:+document.getElementById("iRE").value||0,
+    debt:+document.getElementById("iDebt").value||0,
+    oth:+document.getElementById("iOther").value||0,
+    liq:+document.getElementById("iLiq").value||0,
+    ins:+document.getElementById("iIns").value||0,
+    rr:(+document.getElementById("iRR").value||0)/100,
+    or:(+document.getElementById("iOR").value||0)/100,
+    yrs:+document.getElementById("iYrs").value||10,
+    exmpt:+document.getElementById("iExmpt").value||0,
+    taxRate:(+document.getElementById("iTR").value||0)/100,
+    probPct:(+document.getElementById("iPR").value||0)/100,
+    giftPct:(+document.getElementById("sGift").value||0)/100,
+    flpDisc:(+document.getElementById("sFLP").value||0)/100,
+    ilit:document.getElementById("tIlit").checked,
+  };
+  const inclIns=document.getElementById("tIns").checked;
+  const inclGift=document.getElementById("tGift").checked;
+  const r=model(inp,inclIns,inclGift);
+
+  set("rRE",fmt(r.pRE),"hi");
+  set("rOth",fmt(r.pOth),"hi");
+  set("rGross",fmt(r.pGross));
+  set("rNet",fmt(r.pNet));
+  set("rGift",fmt(r.gAmt),"ok");
+  set("rTax",fmt(r.taxEst));
+  set("rETax",fmt(r.eTax),"dn");
+  set("rProb",fmt(r.prob),"dn");
+  set("rTot",fmt(r.totCost),"dn");
+  set("rInsOff",fmt(r.insOff),"hi");
+  set("rAvail",fmt(r.avail));
+  set("rShort",fmt(r.short),r.short>0?"dn":"ok");
+  set("rLeg",fmt(r.leg),"ok");
+
+  const mc=document.getElementById("mcShort");
+  mc.className="mc "+(r.short>0?"dn":"ok");
+
+  const rCls={Low:"rL",Moderate:"rM",High:"rH",Unknown:"rU"};
+  document.getElementById("rRisk").innerHTML=`<span class="rbadge ${rCls[r.risk]}">${r.risk}</span>`;
+
+  drawChart(timeSeries(inp,inclIns,inclGift));
+}
+
+// ── CHART ────────────────────────────────────────────────────
+function drawChart(rows){
+  const cv=document.getElementById("ch");
+  const cont=cv.parentElement;
+  const W=cont.clientWidth||640,H=cont.clientHeight||220;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr;cv.height=H*dpr;
+  cv.style.width=W+"px";cv.style.height=H+"px";
+  const ctx=cv.getContext("2d");ctx.scale(dpr,dpr);
+
+  const PAD={t:16,r:18,b:28,l:64};
+  const cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
+
+  const all=rows.flatMap(r=>[r.pNet,r.totCost,r.leg,r.short]);
+  const mx=Math.max(...all)*1.1||1;
+
+  const xp=yr=>PAD.l+((yr-1)/29)*cW;
+  const yp=v=>PAD.t+cH-(v/mx)*cH;
+
+  // Background
+  ctx.fillStyle="#0a0f1a";ctx.fillRect(0,0,W,H);
+
+  // Grid
+  for(let i=0;i<=4;i++){
+    const y=PAD.t+(cH*i/4);
+    ctx.strokeStyle="#141e2e";ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
+    ctx.fillStyle="#2a4a6a";ctx.font="10px system-ui";ctx.textAlign="right";
+    ctx.fillText(fmt(mx*(4-i)/4),PAD.l-4,y+4);
+  }
+
+  // Year labels
+  ctx.fillStyle="#2a4a6a";ctx.textAlign="center";ctx.font="10px system-ui";
+  [1,5,10,15,20,25,30].forEach(yr=>ctx.fillText("Y"+yr,xp(yr),H-PAD.b+14));
+
+  // Series
+  const ser=[
+    {k:"pNet",c:"#4a90e0"},
+    {k:"totCost",c:"#e06060"},
+    {k:"leg",c:"#40c070"},
+    {k:"short",c:"#d08030"},
+  ];
+  ser.forEach(({k,c})=>{
+    ctx.strokeStyle=c;ctx.lineWidth=2;ctx.beginPath();
+    rows.forEach((r,i)=>{const x=xp(r.yr),y=yp(r[k]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();
+  });
+}
+
+window.addEventListener("resize",()=>{if(who)calc();});
+</script>
+</body>
+</html>
